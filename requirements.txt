@@ -83,6 +83,8 @@ grpcio==1.83.0
     # via
     #   chromadb
     #   opentelemetry-exporter-otlp-proto-grpc
+gunicorn==26.1.0
+    # via rag-project (pyproject.toml)
 h11==0.16.0
     # via
     #   httpcore

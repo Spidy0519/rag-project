@@ -78,3 +78,28 @@ rag-project/
 | POST | `/scrape` | Scrape URLs |
 | POST | `/ask` | Ask a question |
 | GET | `/stats` | Vector store stats |
+
+## Deploy to Render
+
+1. Push code to GitHub
+
+2. Go to [render.com](https://render.com) → New → **Web Service**
+
+3. Connect your GitHub repo
+
+4. Render auto-detects `render.yaml`. Settings:
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120`
+
+5. Add env var:
+   ```
+   GEMINI_API_KEY = your_key_here
+   ```
+
+6. Add **Persistent Disk** (Settings → Disks):
+   - Mount Path: `/app/chroma_db`
+   - Size: 1 GB
+
+7. Deploy — your app will be live at `https://your-app.onrender.com`
+
+> **Note:** First deploy takes ~5 min (installing torch + sentence-transformers). Free tier spins down after 15 min of inactivity — first request after idle may take 30-60s to wake up.
