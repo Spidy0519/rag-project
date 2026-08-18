@@ -91,15 +91,12 @@ rag-project/
    - **Build Command:** `pip install -r requirements.txt`
    - **Start Command:** `gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120`
 
-5. Add env var:
+5. Add env vars:
    ```
    GEMINI_API_KEY = your_key_here
+   CHROMA_MODE = memory
    ```
 
-6. Add **Persistent Disk** (Settings → Disks):
-   - Mount Path: `/app/chroma_db`
-   - Size: 1 GB
+6. Deploy — your app will be live at `https://your-app.onrender.com`
 
-7. Deploy — your app will be live at `https://your-app.onrender.com`
-
-> **Note:** First deploy takes ~5 min (installing torch + sentence-transformers). Free tier spins down after 15 min of inactivity — first request after idle may take 30-60s to wake up.
+> **Note:** Free tier uses in-memory ChromaDB — data resets after idle/restart. Re-upload or re-scrape as needed. First deploy takes ~5 min. Free tier spins down after 15 min idle — first request takes 30-60s to wake.

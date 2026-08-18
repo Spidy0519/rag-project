@@ -1,5 +1,5 @@
+import os
 import chromadb
-from config import CHROMA_DIR
 
 _client = None
 _collection = None
@@ -7,7 +7,13 @@ _collection = None
 def get_collection():
     global _client, _collection
     if _collection is None:
-        _client = chromadb.PersistentClient(path=CHROMA_DIR)
+        mode = os.getenv("CHROMA_MODE", "memory")
+        if mode == "persist":
+            from config import CHROMA_DIR
+            os.makedirs(CHROMA_DIR, exist_ok=True)
+            _client = chromadb.PersistentClient(path=CHROMA_DIR)
+        else:
+            _client = chromadb.Client()
         _collection = _client.get_or_create_collection(
             name="rag_docs",
             metadata={"hnsw:space": "cosine"}
