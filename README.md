@@ -15,29 +15,29 @@ Hybrid RAG system for programming questions (Python, Java, C) with document uplo
 
 | Layer | Tool |
 |---|---|
-| Package manager | pip |
-| Backend | Flask + Gunicorn |
+| Backend | FastAPI + Uvicorn |
+| Vector DB | Pinecone (serverless, free tier) |
+| Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
+| LLM | Google Gemini API (gemini-3.5-flash-lite) |
 | Web scraping | requests + BeautifulSoup4 |
 | Document parsing | pypdf, python-docx, pandas |
-| Chunking | Custom recursive splitter (500 chars, 100 overlap) |
-| Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
-| Vector DB | ChromaDB (in-memory) |
-| LLM | Google Gemini API (gemini-3.5-flash-lite) |
 | Frontend | HTML + CSS + vanilla JS |
 
 ## Setup (Local)
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-prod.txt
 cp .env.example .env
 ```
 
-Add your Gemini API key to `.env`:
+Add your API keys to `.env`:
 ```
-GEMINI_API_KEY=your_key_here
+GEMINI_API_KEY=your_gemini_key
+PINECONE_API_KEY=your_pinecone_key
 ```
 
-Get a free key at [Google AI Studio](https://aistudio.google.com/apikey).
+- Get Gemini key at [Google AI Studio](https://aistudio.google.com/apikey)
+- Get Pinecone key at [pinecone.io](https://www.pinecone.io/) (free tier: 100K vectors)
 
 ## Run (Local)
 
@@ -45,18 +45,17 @@ Get a free key at [Google AI Studio](https://aistudio.google.com/apikey).
 python app.py
 ```
 
-Open [http://localhost:5000](http://localhost:5000).
+Open [http://localhost:7860](http://localhost:7860).
 
 ## Deploy to Hugging Face Spaces
 
 1. Create a new Space at [huggingface.co/new-space](https://huggingface.co/new-space)
 2. Choose **Docker** as the SDK
 3. Push this code to the Space repo
-4. Add **Secret** in Space Settings:
-   - `GEMINI_API_KEY` = your API key
-5. Build starts automatically — live at `https://your-username.github.io/space-name`
-
-> **Note:** In-memory ChromaDB — data resets on restart. Re-upload or re-scrape as needed.
+4. Add **Secrets** in Space Settings:
+   - `GEMINI_API_KEY` = your Gemini API key
+   - `PINECONE_API_KEY` = your Pinecone API key
+5. Build starts automatically
 
 ## Features
 

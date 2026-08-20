@@ -1,46 +1,65 @@
 import os
-import chromadb
+from pinecone import Pinecone, ServerlessSpec
+from config import PINECONE_API_KEY, PINECONE_INDEX_NAME
 
-_client = None
-_collection = None
+_pc = None
+_index = None
 
-def get_collection():
-    global _client, _collection
-    if _collection is None:
-        mode = os.getenv("CHROMA_MODE", "memory")
-        if mode == "persist":
-            from config import CHROMA_DIR
-            os.makedirs(CHROMA_DIR, exist_ok=True)
-            _client = chromadb.PersistentClient(path=CHROMA_DIR)
-        else:
-            _client = chromadb.Client()
-        _collection = _client.get_or_create_collection(
-            name="rag_docs",
-            metadata={"hnsw:space": "cosine"}
-        )
-    return _collection
 
-def add_documents(documents: list[str], embeddings: list[list[float]], metadatas: list[dict], ids: list[str]):
-    col = get_collection()
-    batch_size = 100
-    for i in range(0, len(documents), batch_size):
-        end = min(i + batch_size, len(documents))
-        col.add(
-            documents=documents[i:end],
-            embeddings=embeddings[i:end],
-            metadatas=metadatas[i:end],
-            ids=ids[i:end],
-        )
+def get_index():
+    global _pc, _index
+    if _index is None:
+        _pc = Pinecone(api_key=PINECONE_API_KEY)
+        existing = [idx.name for idx in _pc.indexes.list()]
+        if PINECONE_INDEX_NAME not in existing:
+            _pc.indexes.create(
+                name=PINECONE_INDEX_NAME,
+                dimension=384,
+                metric="cosine",
+                spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+            )
+        _index = _pc.index(PINECONE_INDEX_NAME)
+    return _index
 
-def query_similar(query_embedding: list[float], top_k: int = 5) -> dict:
-    col = get_collection()
-    results = col.query(
-        query_embeddings=[query_embedding],
-        n_results=top_k,
-        include=["documents", "metadatas", "distances"],
+
+def add_documents(documents, embeddings, metadatas, ids):
+    index = get_index()
+    vectors = []
+    for id_val, emb, doc, meta in zip(ids, embeddings, documents, metadatas):
+        safe_meta = {k: v for k, v in meta.items() if isinstance(v, (str, int, float, bool))}
+        safe_meta["text"] = doc[:1000]
+        vectors.append({
+            "id": id_val,
+            "values": emb,
+            "metadata": safe_meta,
+        })
+    index.upsert(vectors=vectors)
+
+
+def query_similar(query_embedding, top_k=3):
+    index = get_index()
+    results = index.query(
+        vector=query_embedding,
+        top_k=top_k,
+        include_metadata=True,
     )
-    return results
+    docs = []
+    metas = []
+    dists = []
+    for match in results.matches:
+        meta = dict(match.metadata) if match.metadata else {}
+        text = meta.pop("text", "")
+        docs.append(text)
+        metas.append(meta)
+        dists.append(match.score)
+    return {
+        "documents": [docs],
+        "metadatas": [metas],
+        "distances": [dists],
+    }
 
-def get_stats() -> dict:
-    col = get_collection()
-    return {"total_chunks": col.count()}
+
+def get_stats():
+    index = get_index()
+    stats = index.describe_index_stats()
+    return {"total_chunks": stats.total_vector_count}

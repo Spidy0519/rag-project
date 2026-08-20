@@ -1,7 +1,13 @@
-.venv
-__pycache__
+.venv/
+__pycache__/
 *.pyc
 .env
 chroma_db/
 uploads/
-.git
+.git/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

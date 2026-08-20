@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-CHROMA_DIR = os.path.join(os.path.dirname(__file__), "chroma_db")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
+PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "rag-assistant")
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 CHUNK_SIZE = 500
