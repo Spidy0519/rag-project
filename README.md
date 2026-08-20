@@ -1,3 +1,12 @@
+---
+title: RAG Assistant
+emoji: 🔍
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 # RAG Assistant
 
 Hybrid RAG system for programming questions (Python, Java, C) with document upload support.
@@ -38,15 +47,15 @@ python app.py
 
 Open [http://localhost:7860](http://localhost:7860).
 
-## Deploy to Render
+## Deploy to Hugging Face Spaces
 
-1. Create a new **Web Service** at [render.com](https://render.com)
-2. Connect your GitHub repository
-3. Set environment: **Docker**
-4. Add **Environment Variables**:
+1. Create a new Space at [huggingface.co/new-space](https://huggingface.co/new-space)
+2. Choose **Docker** as the SDK
+3. Push this code to the Space repo
+4. Add **Secrets** in Space Settings:
    - `GEMINI_API_KEY` = your Gemini API key
    - `PINECONE_API_KEY` = your Pinecone API key
-5. Deploy
+5. Build starts automatically
 
 ## Features
 
