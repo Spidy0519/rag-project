@@ -1,3 +1,12 @@
+---
+title: RAG Assistant
+emoji: 🔍
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 # RAG Assistant
 
 Hybrid RAG system for programming questions (Python, Java, C) with document upload support.
@@ -6,68 +15,54 @@ Hybrid RAG system for programming questions (Python, Java, C) with document uplo
 
 | Layer | Tool |
 |---|---|
-| Package manager | uv |
-| Backend | Flask |
+| Package manager | pip |
+| Backend | Flask + Gunicorn |
 | Web scraping | requests + BeautifulSoup4 |
 | Document parsing | pypdf, python-docx, pandas |
 | Chunking | Custom recursive splitter (500 chars, 100 overlap) |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
-| Vector DB | ChromaDB |
+| Vector DB | ChromaDB (in-memory) |
 | LLM | Google Gemini API (gemini-3.5-flash-lite) |
 | Frontend | HTML + CSS + vanilla JS |
 
-## Setup
+## Setup (Local)
 
 ```bash
-uv sync
+pip install -r requirements.txt
 cp .env.example .env
 ```
 
 Add your Gemini API key to `.env`:
-
 ```
 GEMINI_API_KEY=your_key_here
 ```
 
 Get a free key at [Google AI Studio](https://aistudio.google.com/apikey).
 
-## Run
+## Run (Local)
 
 ```bash
-uv run python app.py
+python app.py
 ```
 
 Open [http://localhost:5000](http://localhost:5000).
+
+## Deploy to Hugging Face Spaces
+
+1. Create a new Space at [huggingface.co/new-space](https://huggingface.co/new-space)
+2. Choose **Docker** as the SDK
+3. Push this code to the Space repo
+4. Add **Secret** in Space Settings:
+   - `GEMINI_API_KEY` = your API key
+5. Build starts automatically — live at `https://your-username.github.io/space-name`
+
+> **Note:** In-memory ChromaDB — data resets on restart. Re-upload or re-scrape as needed.
 
 ## Features
 
 - **Chat** — Ask programming questions, get answers with source citations
 - **Upload** — Drag-drop PDF, DOCX, CSV, XLSX, TXT, MD files
 - **Scrape** — Scrape Python/Java/C docs or add custom URLs
-
-## Project Structure
-
-```
-rag-project/
-├── app.py                  # Flask entry point
-├── config.py               # Configuration
-├── scraper/
-│   └── scrape_docs.py      # Web scraper
-├── ingestion/
-│   ├── document_parser.py  # Multi-format parser
-│   └── chunker.py          # Text chunker
-├── rag/
-│   ├── embeddings.py       # Sentence-transformers
-│   ├── vectorstore.py      # ChromaDB
-│   └── generator.py        # Gemini RAG generation
-├── static/
-│   ├── css/style.css
-│   └── js/main.js
-├── templates/
-│   └── index.html
-├── uploads/
-└── chroma_db/
-```
 
 ## API Endpoints
 
@@ -78,25 +73,3 @@ rag-project/
 | POST | `/scrape` | Scrape URLs |
 | POST | `/ask` | Ask a question |
 | GET | `/stats` | Vector store stats |
-
-## Deploy to Render
-
-1. Push code to GitHub
-
-2. Go to [render.com](https://render.com) → New → **Web Service**
-
-3. Connect your GitHub repo
-
-4. Render auto-detects `render.yaml`. Settings:
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120`
-
-5. Add env vars:
-   ```
-   GEMINI_API_KEY = your_key_here
-   CHROMA_MODE = memory
-   ```
-
-6. Deploy — your app will be live at `https://your-app.onrender.com`
-
-> **Note:** Free tier uses in-memory ChromaDB — data resets after idle/restart. Re-upload or re-scrape as needed. First deploy takes ~5 min. Free tier spins down after 15 min idle — first request takes 30-60s to wake.
