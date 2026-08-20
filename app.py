@@ -1,14 +1,6 @@
 import os
 import uuid
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
-import uvicorn
-
-from config import UPLOAD_DIR
+import gradio as gr
 from ingestion.document_parser import parse_file
 from ingestion.chunker import chunk_text
 from rag.embeddings import embed_texts, get_model
@@ -16,82 +8,90 @@ from rag.vectorstore import add_documents, get_stats
 from rag.generator import generate_answer
 from scraper.scrape_docs import scrape_all, scrape_single
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    get_model()
-    yield
+get_model()
 
 
-app = FastAPI(title="RAG Assistant", lifespan=lifespan)
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+def chat(message, history):
+    result = generate_answer(message.strip())
+    answer = result.get("answer", "Error generating answer.")
+    sources = result.get("sources", [])
+    if sources:
+        refs = "\n\n**Sources:** " + ", ".join(
+            s["source"] for s in sources if s.get("source") and s["source"] != "unknown"
+        )
+        return answer + refs
+    return answer
 
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-
-class AskRequest(BaseModel):
-    query: str
-
-
-@app.post("/ask")
-async def ask(req: AskRequest):
-    if not req.query.strip():
-        return JSONResponse({"error": "No query provided"}, status_code=400)
-    return generate_answer(req.query.strip())
-
-
-@app.post("/upload")
-async def upload(file: UploadFile = File(...)):
-    filename = file.filename or "unknown"
-    filepath = os.path.join(UPLOAD_DIR, f"{uuid.uuid4().hex}_{filename}")
-    content = await file.read()
-    with open(filepath, "wb") as f:
-        f.write(content)
+def upload_file(file):
+    if file is None:
+        return "No file selected."
+    filename = os.path.basename(file.name)
     try:
-        text = parse_file(filepath)
+        text = parse_file(file.name)
         if not text.strip():
-            return JSONResponse({"error": "Could not extract text from file"}, status_code=400)
+            return f"Could not extract text from '{filename}'."
         chunks = chunk_text(text, source=filename, extra_meta={"filename": filename})
         texts = [c["text"] for c in chunks]
         metadatas = [c["metadata"] for c in chunks]
         ids = [c["id"] for c in chunks]
         embeddings = embed_texts(texts)
         add_documents(texts, embeddings, metadatas, ids)
-        return {
-            "message": f"Uploaded and indexed '{filename}'",
-            "chunks": len(chunks),
-            "chars": len(text),
-        }
+        return f"Indexed '{filename}' — {len(chunks)} chunks, {len(text)} chars."
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
-    finally:
-        if os.path.exists(filepath):
-            os.remove(filepath)
+        return f"Error: {e}"
 
 
-class ScrapeRequest(BaseModel):
-    url: str | None = None
-    name: str = "custom"
-
-
-@app.post("/scrape")
-async def scrape(req: ScrapeRequest):
-    if req.url:
-        return scrape_single(req.url, req.name)
+def scrape_all_sources():
     results = scrape_all()
-    return {"message": "Scraping complete", "results": results}
+    lines = []
+    for name, info in results.items():
+        status = "ok" if info["status"] == "ok" else "failed"
+        lines.append(f"- {name}: {status} ({info.get('chars', 0)} chars)")
+    return "\n".join(lines) if lines else "No sources scraped."
 
 
-@app.get("/stats")
-async def stats():
-    return get_stats()
+def scrape_url(url, name):
+    if not url or not url.strip():
+        return "Enter a URL."
+    result = scrape_single(url.strip(), name.strip() if name else "custom")
+    if result["status"] == "ok":
+        return f"Scraped {result['chunks']} chunks from {url}"
+    return f"Failed to scrape {url}"
 
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 7860))
-    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=False)
+with gr.Blocks(title="RAG Assistant", theme=gr.themes.Soft()) as demo:
+    gr.Markdown("# RAG Assistant")
+    gr.Markdown("Ask programming questions (Python, Java, C) or upload your own documents.")
+
+    with gr.Tabs():
+        with gr.Tab("Chat"):
+            gr.ChatInterface(
+                chat,
+                examples=[
+                    "What are Python data structures?",
+                    "Explain Java exception handling",
+                    "How does pointer work in C?",
+                ],
+            )
+
+        with gr.Tab("Upload"):
+            file_input = gr.File(label="Upload Document", file_types=[".pdf", ".docx", ".csv", ".xlsx", ".txt", ".md"])
+            upload_output = gr.Textbox(label="Status")
+            file_input.upload(upload_file, inputs=file_input, outputs=upload_output)
+
+        with gr.Tab("Scrape"):
+            gr.Markdown("### Scrape Default Sources")
+            scrape_btn = gr.Button("Scrape Default Sources")
+            scrape_all_output = gr.Textbox(label="Status")
+            scrape_btn.click(scrape_all_sources, outputs=scrape_all_output)
+
+            gr.Markdown("### Scrape Custom URL")
+            with gr.Row():
+                url_input = gr.Textbox(label="URL", placeholder="https://...")
+                name_input = gr.Textbox(label="Label", placeholder="optional")
+            scrape_url_btn = gr.Button("Scrape URL")
+            scrape_url_output = gr.Textbox(label="Status")
+            scrape_url_btn.click(scrape_url, inputs=[url_input, name_input], outputs=scrape_url_output)
+
+demo.launch()

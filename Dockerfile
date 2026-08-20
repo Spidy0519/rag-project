@@ -14,6 +14,6 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 ENV TOKENIZERS_PARALLELISM=false
 
-EXPOSE 7860
+EXPOSE 8080
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}
