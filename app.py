@@ -1,3 +1,4 @@
+import spaces
 import os
 import uuid
 import gradio as gr
@@ -9,6 +10,14 @@ from rag.generator import generate_answer
 from scraper.scrape_docs import scrape_all, scrape_single
 
 get_model()
+
+
+@spaces.GPU(duration=120)
+def _gpu_init():
+    pass
+
+
+_gpu_init()
 
 
 def chat(message, history):
@@ -60,7 +69,7 @@ def scrape_url(url, name):
     return f"Failed to scrape {url}"
 
 
-with gr.Blocks(title="RAG Assistant", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="RAG Assistant") as demo:
     gr.Markdown("# RAG Assistant")
     gr.Markdown("Ask programming questions (Python, Java, C) or upload your own documents.")
 
@@ -94,4 +103,4 @@ with gr.Blocks(title="RAG Assistant", theme=gr.themes.Soft()) as demo:
             scrape_url_output = gr.Textbox(label="Status")
             scrape_url_btn.click(scrape_url, inputs=[url_input, name_input], outputs=scrape_url_output)
 
-demo.launch()
+demo.launch(server_name="0.0.0.0", server_port=7860)
