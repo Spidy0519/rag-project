@@ -1,6 +1,5 @@
-import spaces
 import os
-import uuid
+import traceback
 import gradio as gr
 from ingestion.document_parser import parse_file
 from ingestion.chunker import chunk_text
@@ -11,64 +10,75 @@ from scraper.scrape_docs import scrape_all, scrape_single
 
 get_model()
 
+import spaces
 
-@spaces.GPU(duration=120)
-def process_upload(file):
-    filename = os.path.basename(file.name)
-    text = parse_file(file.name)
-    if not text.strip():
-        return f"Could not extract text from '{filename}'."
-    chunks = chunk_text(text, source=filename, extra_meta={"filename": filename})
-    texts = [c["text"] for c in chunks]
-    metadatas = [c["metadata"] for c in chunks]
-    ids = [c["id"] for c in chunks]
-    embeddings = embed_texts(texts)
-    add_documents(texts, embeddings, metadatas, ids)
-    return f"Indexed '{filename}' — {len(chunks)} chunks, {len(text)} chars."
+
+@spaces.GPU
+def _dummy():
+    pass
+
+
+def chat(message, history):
+    try:
+        result = generate_answer(message.strip())
+        answer = result.get("answer", "Error generating answer.")
+        sources = result.get("sources", [])
+        if sources:
+            refs = "\n\n**Sources:** " + ", ".join(
+                s["source"] for s in sources if s.get("source") and s["source"] != "unknown"
+            )
+            return answer + refs
+        return answer
+    except Exception as e:
+        traceback.print_exc()
+        return f"Chat error: {e}"
 
 
 def upload_file(file):
     if file is None:
         return "No file selected."
     try:
-        return process_upload(file)
+        filepath = file.name if hasattr(file, "name") else file
+        filename = os.path.basename(filepath)
+        text = parse_file(filepath)
+        if not text.strip():
+            return f"Could not extract text from '{filename}'."
+        chunks = chunk_text(text, source=filename, extra_meta={"filename": filename})
+        texts = [c["text"] for c in chunks]
+        metadatas = [c["metadata"] for c in chunks]
+        ids = [c["id"] for c in chunks]
+        embeddings = embed_texts(texts)
+        add_documents(texts, embeddings, metadatas, ids)
+        return f"Indexed '{filename}' — {len(chunks)} chunks, {len(text)} chars."
     except Exception as e:
-        return f"Error: {e}"
-
-
-@spaces.GPU(duration=120)
-def process_chat(message):
-    return generate_answer(message.strip())
-
-
-def chat(message, history):
-    result = process_chat(message)
-    answer = result.get("answer", "Error generating answer.")
-    sources = result.get("sources", [])
-    if sources:
-        refs = "\n\n**Sources:** " + ", ".join(
-            s["source"] for s in sources if s.get("source") and s["source"] != "unknown"
-        )
-        return answer + refs
-    return answer
+        traceback.print_exc()
+        return f"Upload error: {e}"
 
 
 def scrape_all_sources():
-    results = scrape_all()
-    lines = []
-    for name, info in results.items():
-        status = "ok" if info["status"] == "ok" else "failed"
-        lines.append(f"- {name}: {status} ({info.get('chars', 0)} chars)")
-    return "\n".join(lines) if lines else "No sources scraped."
+    try:
+        results = scrape_all()
+        lines = []
+        for name, info in results.items():
+            status = "ok" if info["status"] == "ok" else "failed"
+            lines.append(f"- {name}: {status} ({info.get('chars', 0)} chars)")
+        return "\n".join(lines) if lines else "No sources scraped."
+    except Exception as e:
+        traceback.print_exc()
+        return f"Scrape error: {e}"
 
 
 def scrape_url(url, name):
     if not url or not url.strip():
         return "Enter a URL."
-    result = scrape_single(url.strip(), name.strip() if name else "custom")
-    if result["status"] == "ok":
-        return f"Scraped {result['chunks']} chunks from {url}"
-    return f"Failed to scrape {url}"
+    try:
+        result = scrape_single(url.strip(), name.strip() if name else "custom")
+        if result["status"] == "ok":
+            return f"Scraped {result['chunks']} chunks from {url}"
+        return f"Failed to scrape {url}"
+    except Exception as e:
+        traceback.print_exc()
+        return f"Scrape error: {e}"
 
 
 with gr.Blocks(title="RAG Assistant") as demo:
