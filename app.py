@@ -13,15 +13,36 @@ get_model()
 
 
 @spaces.GPU(duration=120)
-def _gpu_init():
-    pass
+def process_upload(file):
+    filename = os.path.basename(file.name)
+    text = parse_file(file.name)
+    if not text.strip():
+        return f"Could not extract text from '{filename}'."
+    chunks = chunk_text(text, source=filename, extra_meta={"filename": filename})
+    texts = [c["text"] for c in chunks]
+    metadatas = [c["metadata"] for c in chunks]
+    ids = [c["id"] for c in chunks]
+    embeddings = embed_texts(texts)
+    add_documents(texts, embeddings, metadatas, ids)
+    return f"Indexed '{filename}' — {len(chunks)} chunks, {len(text)} chars."
 
 
-_gpu_init()
+def upload_file(file):
+    if file is None:
+        return "No file selected."
+    try:
+        return process_upload(file)
+    except Exception as e:
+        return f"Error: {e}"
+
+
+@spaces.GPU(duration=120)
+def process_chat(message):
+    return generate_answer(message.strip())
 
 
 def chat(message, history):
-    result = generate_answer(message.strip())
+    result = process_chat(message)
     answer = result.get("answer", "Error generating answer.")
     sources = result.get("sources", [])
     if sources:
@@ -30,25 +51,6 @@ def chat(message, history):
         )
         return answer + refs
     return answer
-
-
-def upload_file(file):
-    if file is None:
-        return "No file selected."
-    filename = os.path.basename(file.name)
-    try:
-        text = parse_file(file.name)
-        if not text.strip():
-            return f"Could not extract text from '{filename}'."
-        chunks = chunk_text(text, source=filename, extra_meta={"filename": filename})
-        texts = [c["text"] for c in chunks]
-        metadatas = [c["metadata"] for c in chunks]
-        ids = [c["id"] for c in chunks]
-        embeddings = embed_texts(texts)
-        add_documents(texts, embeddings, metadatas, ids)
-        return f"Indexed '{filename}' — {len(chunks)} chunks, {len(text)} chars."
-    except Exception as e:
-        return f"Error: {e}"
 
 
 def scrape_all_sources():
