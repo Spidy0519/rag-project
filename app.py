@@ -1,4 +1,4 @@
-import os
+﻿import os
 import traceback
 import gradio as gr
 from ingestion.document_parser import parse_file
@@ -10,11 +10,13 @@ from scraper.scrape_docs import scrape_all, scrape_single
 
 get_model()
 
-import spaces
+try:
+    import spaces
 
-
-@spaces.GPU
-def _dummy():
+    @spaces.GPU
+    def _dummy():
+        pass
+except Exception:
     pass
 
 
@@ -49,7 +51,7 @@ def upload_file(file):
         ids = [c["id"] for c in chunks]
         embeddings = embed_texts(texts)
         add_documents(texts, embeddings, metadatas, ids)
-        return f"Indexed '{filename}' — {len(chunks)} chunks, {len(text)} chars."
+        return f"Indexed '{filename}' - {len(chunks)} chunks, {len(text)} chars."
     except Exception as e:
         traceback.print_exc()
         return f"Upload error: {e}"
