@@ -4,7 +4,7 @@ A Hybrid Retrieval-Augmented Generation (RAG) system for answering programming q
 
 ## Live Demo
 
-- **Hugging Face Spaces:** [https://huggingface.co/spaces/Rahuman0519/rag-chatbot](https://huggingface.co/spaces/Rahuman0519/rag-chatbot)
+- **Live URL:** [https://rahuman0519-rag-chatbot.hf.space/](https://rahuman0519-rag-chatbot.hf.space/)
 
 ## Features
 

@@ -193,7 +193,7 @@ Pre-configured sources for programming documentation:
 - **SDK:** Gradio
 - **Compute:** 2 vCPU, 16GB RAM
 - **Storage:** Persistent file storage
-- **URL:** https://huggingface.co/spaces/Rahuman0519/rag-chatbot
+- **URL:** https://rahuman0519-rag-chatbot.hf.space/
 
 ### 7.2 Environment Variables
 
