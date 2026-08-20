@@ -1,5 +1,7 @@
-﻿import os
+﻿import spaces
+import os
 import traceback
+import torch
 import gradio as gr
 from ingestion.document_parser import parse_file
 from ingestion.chunker import chunk_text
@@ -8,15 +10,12 @@ from rag.vectorstore import add_documents, get_stats
 from rag.generator import generate_answer
 from scraper.scrape_docs import scrape_all, scrape_single
 
+torch.device("cpu")
 get_model()
 
-try:
-    import spaces
 
-    @spaces.GPU
-    def _dummy():
-        pass
-except Exception:
+@spaces.GPU
+def _dummy():
     pass
 
 
